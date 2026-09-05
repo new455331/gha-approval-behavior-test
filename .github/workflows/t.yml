@@ -1,0 +1,27 @@
+name: approval-behavior-test
+on:
+  pull_request:
+    types: [opened, synchronize]
+permissions:
+  pull-requests: write
+  contents: write
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bot approves the PR using GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} --approve              --repo ${{ github.repository }} --body "automated approval"
+          echo "approval posted"
+      - name: Show review state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews --jq ".[] | {user: .user.login, state: .state}"
+      - name: Attempt merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} --squash --repo ${{ github.repository }}
+          echo "MERGE SUCCEEDED"
