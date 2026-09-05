@@ -1,7 +1,7 @@
 name: approval-behavior-test
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 permissions:
   pull-requests: write
   contents: write
@@ -12,16 +12,20 @@ jobs:
       - name: Bot approves the PR using GITHUB_TOKEN
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh pr review ${{ github.event.pull_request.number }} --approve              --repo ${{ github.repository }} --body "automated approval"
-          echo "approval posted"
-      - name: Show review state
+          gh pr review "$PR" --approve --repo "$REPO" --body "automated approval" && echo "APPROVE_OK" || echo "APPROVE_FAILED"
+      - name: Show reviews
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews --jq ".[] | {user: .user.login, state: .state}"
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh api "repos/$REPO/pulls/$PR/reviews" --jq '.[] | "\(.user.login) -> \(.state)"'
       - name: Attempt merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh pr merge ${{ github.event.pull_request.number }} --squash --repo ${{ github.repository }}
-          echo "MERGE SUCCEEDED"
+          gh pr merge "$PR" --squash --repo "$REPO" && echo "MERGE_SUCCEEDED" || echo "MERGE_FAILED"
